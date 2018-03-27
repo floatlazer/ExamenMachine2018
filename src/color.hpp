@@ -16,11 +16,18 @@ namespace color
 		    alpha = 3
 		};
 
-		rgba() : m_value({0.,0.,0.,1.})
-		{}
+		rgba() : m_value()
+		{
+		    m_value[0] = 0.;
+		    m_value[1] = 0.;
+		    m_value[2] = 0.;
+		    m_value[3] = 1.;
+		}
 	    rgba( double vr, double vg, double vb, double va = 1. ) :
-	        m_value({vr,vg,vb,va})
-	    {}
+	        m_value()
+	    {
+	        m_value[0] = vr; m_value[1] = vg; m_value[2] = vb; m_value[3] = va;
+	    }
 	    rgba( const rgba& ) = default;
 	    rgba( rgba&& ) = default;
 	    ~rgba() = default;
@@ -59,10 +66,17 @@ namespace color
 		enum component {
 			hue=0, saturation, value, alpha
 		};
-		hsva() : m_value({0.,0.,0.,1.})
-		{}
-		hsva( double vh, double vs, double vv, double va ) : m_value({vh,vs,vv,va})
-		{}
+		hsva() : m_value()
+		{
+		    m_value[0] = 0.;
+		    m_value[1] = 0.;
+		    m_value[2] = 0.;
+		    m_value[3] = 1.;
+		}
+		hsva( double vh, double vs, double vv, double va ) : m_value()
+		{
+		    m_value[0] = vh; m_value[1] = vs; m_value[2] = vv; m_value[3] = va;
+		}
 		hsva( const rgba& col ) : m_value()
 		{
 			m_value[alpha] = col[rgba::alpha];
