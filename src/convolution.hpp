@@ -2,6 +2,7 @@
 # include <algorithm>
 # include <cassert>
 # include "image.hpp"
+#include <omp.h>
 
 class convolution
 {
@@ -14,6 +15,7 @@ public:
 
 	virtual image apply_on( const image& img_in ) const {
 		image img_out(img_in.height, img_in.width);
+		# pragma omp parallel for collapse(2)
 		for ( int i_picture = 0; i_picture < img_in.height; i_picture++ )
 		{
 			for ( int j_picture = 0; j_picture < img_in.width; j_picture++ )

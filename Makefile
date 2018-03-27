@@ -1,8 +1,8 @@
-CXX=g++
+CXX=mpiCC
 OPTIM = -O3 -march=native
 DEBUG = -g -Wall
 
-OPTC  = ${OPTIM} -std=c++11
+OPTC  = ${OPTIM} -std=c++11 -fopenmp
 
 SRCS = src
 

@@ -10,6 +10,9 @@
 #include "detect_bord.hpp"
 #include "repoussage.hpp"
 #include "gauss3.hpp"
+#include <chrono>
+#include <omp.h>
+#include <mpi.h>
 
 std::size_t number_of_frame( const std::string& root_name )
 {
@@ -80,22 +83,83 @@ int main( int nargs, char* argv[] )
 
 	auto transformations = set_transformations( nargs, argv );
 
-	std::size_t nb_frames = number_of_frame( default_animation_root_name );
-	std::cerr << "nombre de fichiers a ouvrir : " << nb_frames << std::endl;
+    // Init MPI begin
+    MPI_Init( &nargs, &argv );
+    MPI_Comm globComm;
+    MPI_Comm_dup(MPI_COMM_WORLD, &globComm);
+    int nbp;
+    MPI_Comm_size(globComm, &nbp);
+    int rank;
+    MPI_Comm_rank(globComm, &rank);
 
-	for ( int i = 0; i < nb_frames; ++i )
-	{
-		char number[4], number2[4];
-		sprintf(number,"%d",int(i));
-		sprintf(number2,"%03d",int(i));
-		std::string filename_in  = default_animation_root_name+"-"+std::string(number)+".png";
-		std::string filename_out = default_animation_root_name+"_out."+std::string(number2)+".png";
-		image image_in = load_image( filename_in.c_str() );
-		image image_out(image_in);
-		for ( auto& f : transformations )
-			image_out = f->apply_on(image_out);
-		save_image(filename_out.c_str(), image_out);
-	}
+    // Master
+    if(rank == 0) 
+    {
+		std::size_t nb_frames = number_of_frame( default_animation_root_name );
+		std::cerr << "nombre de fichiers a ouvrir : " << nb_frames << std::endl;
+
+    	int nb_frames_sent = 0;
+    	int nb_frames_recv = 0;
+    	int finishSignal = -1;
+        MPI_Status currentStatus;
+        // Send first tasks
+        for(int rk = 0; rk < nbp-1; rk++)
+        {
+        	if(rk < nb_frames)
+ 			{
+           		MPI_Send(&rk, 1, MPI_INT, rk+1, 0, globComm); // send first tasks
+           		std::cout << "Send task row "<< nb_frames_sent << " to slave " << rk+1 << std::endl;
+        	    nb_frames_sent++;
+        	}
+        	else
+            {
+                MPI_Send(&finishSignal, 1, MPI_INT, rk+1, 0, globComm); // kill the rest of process
+            }
+        }
+        // Receive finish signal and send new frame if any
+        while(nb_frames_recv < nb_frames)
+        {
+        	int finished;
+            MPI_Recv(&finished, 1, MPI_INT, MPI_ANY_SOURCE, MPI_ANY_TAG, globComm, &currentStatus);
+            nb_frames_recv++;
+            //int currentRowNum = currentStatus.MPI_TAG;
+            int slave_rk = currentStatus.MPI_SOURCE;
+            if(nb_frames_sent < nb_frames)
+            {
+                MPI_Send(&nb_frames_sent, 1, MPI_INT, slave_rk, 0, globComm); // send next line
+                std::cout << "Send task frame "<< nb_frames_sent << " to slave " << slave_rk << std::endl;
+                nb_frames_sent++;
+            }
+            else
+            {
+                MPI_Send(&finishSignal, 1, MPI_INT, slave_rk, 0, globComm); // kill the process
+            }
+        }
+    }
+    else // Slave
+    {
+    	int frame_recv = 0;
+        while(frame_recv != -1)
+        {
+            MPI_Recv(&frame_recv, 1, MPI_INT, 0, 0, globComm, NULL);
+            if(frame_recv != -1)
+            {
+                char number[4], number2[4];
+				sprintf(number,"%d",int(frame_recv));
+				sprintf(number2,"%03d",int(frame_recv));
+				std::string filename_in  = default_animation_root_name+"-"+std::string(number)+".png";
+				std::string filename_out = default_animation_root_name+"_out."+std::string(number2)+".png";
+				image image_in = load_image( filename_in.c_str() );
+				image image_out(image_in);
+				for ( auto& f : transformations )
+					image_out = f->apply_on(image_out);
+				save_image(filename_out.c_str(), image_out);
+				int finished = 0;
+                MPI_Send(&finished, 1, MPI_INT, 0, frame_recv, globComm); // send finish signal to master
+            }  
+        }
+    }
+    MPI_Finalize();
 
 	return 0;
 }
