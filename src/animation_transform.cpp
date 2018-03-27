@@ -83,7 +83,7 @@ int main( int nargs, char* argv[] )
 
 	auto transformations = set_transformations( nargs, argv );
 
-    // Init MPI begin
+    // Init MPI 
     MPI_Init( &nargs, &argv );
     MPI_Comm globComm;
     MPI_Comm_dup(MPI_COMM_WORLD, &globComm);
@@ -108,7 +108,7 @@ int main( int nargs, char* argv[] )
         	if(rk < nb_frames)
  			{
            		MPI_Send(&rk, 1, MPI_INT, rk+1, 0, globComm); // send first tasks
-           		std::cout << "Send task row "<< nb_frames_sent << " to slave " << rk+1 << std::endl;
+           		std::cout << "Send task frame "<< nb_frames_sent << " to slave " << rk+1 << std::endl;
         	    nb_frames_sent++;
         	}
         	else
